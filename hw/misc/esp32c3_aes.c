@@ -138,8 +138,8 @@ static void esp32c3_aes_dma_start(ESP32C3AesState *s)
     /* Get the GDMA input channel index for AES peripheral */
     assert(s->gdma != NULL);
 
-    if ( !esp32c3_gdma_get_channel_periph(s->gdma, GDMA_AES, ESP32C3_GDMA_OUT_IDX, &gdma_out_idx) ||
-         !esp32c3_gdma_get_channel_periph(s->gdma, GDMA_AES, ESP32C3_GDMA_IN_IDX, &gdma_in_idx) ) {
+    if ( !esp_gdma_get_channel_periph(s->gdma, GDMA_AES, ESP_GDMA_OUT_IDX, &gdma_out_idx) ||
+         !esp_gdma_get_channel_periph(s->gdma, GDMA_AES, ESP_GDMA_IN_IDX, &gdma_in_idx) ) {
         warn_report("[AES] GDMA requested but no properly configured channel found");
         goto close_exit;
     }
@@ -149,7 +149,7 @@ static void esp32c3_aes_dma_start(ESP32C3AesState *s)
     uint32_t buf_size = s->block_num_reg * 16;
     uint8_t *buffer = esp32c3_aes_get_buffer(buf_size);
 
-    if ( !esp32c3_gdma_read_channel(s->gdma, gdma_out_idx, buffer, buf_size) ) {
+    if ( !esp_gdma_read_channel(s->gdma, gdma_out_idx, buffer, buf_size) ) {
         warn_report("[AES] Error reading from GDMA buffer");
         goto close_exit;
     }
@@ -193,7 +193,7 @@ static void esp32c3_aes_dma_start(ESP32C3AesState *s)
         goto close_exit;
     }
 
-    if ( !esp32c3_gdma_write_channel(s->gdma, gdma_in_idx, buffer, buf_size) ) {
+    if ( !esp_gdma_write_channel(ESP_GDMA(s->gdma), gdma_in_idx, buffer, buf_size) ) {
         warn_report("[AES] Error writing to GDMA buffer");
         goto close_exit;
     }

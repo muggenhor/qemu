@@ -84,7 +84,7 @@ typedef struct ESP32C3ShaState {
     qemu_irq irq;
 
     /* Public: must be set before realizing instance*/
-    ESP32C3GdmaState *gdma;
+    ESPGdmaState *gdma;
 } ESP32C3ShaState;
 
 typedef struct ESP32C3ShaClass {

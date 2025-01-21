@@ -65,7 +65,7 @@ static void esp32c3_sha_continue_dma(ESP32C3ShaState *s)
 
     /* Get the GDMA channel connected to SHA module.
      * Specify ESP32C3_GDMA_OUT_IDX since the data are going OUT of GDMA but IN our current component. */
-    if ( !esp32c3_gdma_get_channel_periph(s->gdma, GDMA_SHA, ESP32C3_GDMA_OUT_IDX, &gdma_out_idx) )
+    if ( !esp_gdma_get_channel_periph(s->gdma, GDMA_SHA, ESP_GDMA_OUT_IDX, &gdma_out_idx) )
     {
         warn_report("[SHA] GDMA requested but no properly configured channel found");
         return;
@@ -79,7 +79,7 @@ static void esp32c3_sha_continue_dma(ESP32C3ShaState *s)
         return;
     }
 
-    if ( !esp32c3_gdma_read_channel(s->gdma, gdma_out_idx, buffer, buf_size) ) {
+    if ( !esp_gdma_read_channel(s->gdma, gdma_out_idx, buffer, buf_size) ) {
         warn_report("[SHA] Error reading from GDMA buffer");
         g_free(buffer);
     }
