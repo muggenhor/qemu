@@ -71,7 +71,7 @@ typedef struct ESP32S3AesState {
     qemu_irq irq;
 
     /* Public: must be set by the machine before realizing current instance */
-    ESP32S3GdmaState *gdma;
+    ESPGdmaState *gdma;
 } ESP32S3AesState;
 
 

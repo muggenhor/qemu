@@ -745,14 +745,16 @@ static void esp32s3_machine_init(MachineState *machine)
         memory_region_add_subregion_overlap(sys_mem, DR_REG_GDMA_BASE, mr, 0);
         /* Connect the IRQs to the Interrupt Matrix */
         for (int i = 0; i < ESP32S3_GDMA_CHANNEL_COUNT; i++) {
-            sysbus_connect_irq(SYS_BUS_DEVICE(&ss->gdma), i,
-                               qdev_get_gpio_in(intmatrix_dev, ETS_DMA_IN_CH0_INTR_SOURCE + i));
+            qdev_connect_gpio_out_named(DEVICE(&ss->gdma), ESP_GDMA_IRQ_IN_NAME, i,
+                                        qdev_get_gpio_in(intmatrix_dev, ETS_DMA_IN_CH0_INTR_SOURCE + i));
+            qdev_connect_gpio_out_named(DEVICE(&ss->gdma), ESP_GDMA_IRQ_OUT_NAME, i,
+                                        qdev_get_gpio_in(intmatrix_dev, ETS_DMA_OUT_CH0_INTR_SOURCE + i));
         }
-    }
+   }
 
     /* SHA realization */
     {
-        ss->sha.gdma = &ss->gdma;
+        ss->sha.gdma = ESP_GDMA(&ss->gdma);
         sysbus_realize(SYS_BUS_DEVICE(&ss->sha), &error_fatal);
         MemoryRegion *mr = sysbus_mmio_get_region(SYS_BUS_DEVICE(&ss->sha), 0);
         memory_region_add_subregion_overlap(sys_mem, DR_REG_SHA_BASE, mr, 0);
@@ -762,7 +764,7 @@ static void esp32s3_machine_init(MachineState *machine)
 
     /* AES realization */
     {
-        ss->aes.gdma = &ss->gdma;
+        ss->aes.gdma = ESP_GDMA(&ss->gdma);
         sysbus_realize(SYS_BUS_DEVICE(&ss->aes), &error_fatal);
         MemoryRegion *mr = sysbus_mmio_get_region(SYS_BUS_DEVICE(&ss->aes), 0);
         memory_region_add_subregion_overlap(sys_mem, DR_REG_AES_BASE, mr, 0);
