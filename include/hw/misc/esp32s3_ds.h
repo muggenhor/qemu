@@ -13,7 +13,7 @@
 #include "hw/hw.h"
 #include "hw/sysbus.h"
 #include "hw/registerfields.h"
-#include "hw/misc/esp32s3_aes.h"
+#include "hw/misc/esp_aes.h"
 #include "hw/misc/esp32s3_sha.h"
 #include "hw/misc/esp_rsa.h"
 #include "hw/misc/esp32s3_hmac.h"
@@ -68,7 +68,7 @@ typedef struct ESP32S3DsState {
     ds_signature_check_t ds_signature_check;
 
     ESP32S3HmacState *hmac;
-    ESP32S3AesState *aes;
+    ESPAesState *aes;
     ESPRsaState *rsa;
     ESP32S3ShaState *sha;
 

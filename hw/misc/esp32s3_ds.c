@@ -55,7 +55,7 @@ static void esp32s3_ds_generate_ds_key(ESP32S3DsState *s)
 
 static void esp32s3_ds_decrypt_ciphertext(ESP32S3DsState *s, uint8_t *buffer)
 {
-    ESP32S3AesClass *aes_class = ESP32S3_AES_GET_CLASS(s->aes);
+    ESPAesClass *aes_class = ESP_AES_GET_CLASS(s->aes);
 
     uint32_t *output_words = (uint32_t *)buffer;
     const uint32_t *input_words = (const uint32_t *)buffer;
@@ -69,7 +69,7 @@ static void esp32s3_ds_decrypt_ciphertext(ESP32S3DsState *s, uint8_t *buffer)
     while ( length > 0 ) {
         memcpy(temp, input_words, 16);
 
-        aes_class->aes_block_start(s->aes, s->ds_key, input_words, output_words, ESP32S3_AES_MODE_256_DEC);
+        aes_class->aes_block_start(s->aes, s->ds_key, input_words, output_words, ESP_AES_MODE_256_DEC);
 
         output_words[0] = output_words[0] ^ iv_words[0];
         output_words[1] = output_words[1] ^ iv_words[1];

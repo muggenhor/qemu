@@ -764,7 +764,7 @@ static void esp32s3_machine_init(MachineState *machine)
 
     /* AES realization */
     {
-        ss->aes.gdma = ESP_GDMA(&ss->gdma);
+        ss->aes.parent.gdma = ESP_GDMA(&ss->gdma);
         sysbus_realize(SYS_BUS_DEVICE(&ss->aes), &error_fatal);
         MemoryRegion *mr = sysbus_mmio_get_region(SYS_BUS_DEVICE(&ss->aes), 0);
         memory_region_add_subregion_overlap(sys_mem, DR_REG_AES_BASE, mr, 0);
@@ -798,7 +798,7 @@ static void esp32s3_machine_init(MachineState *machine)
     /* Digital Signature realization */
     {
         ss->ds.hmac = &ss->hmac;
-        ss->ds.aes = &ss->aes;
+        ss->ds.aes = ESP_AES(&ss->aes);
         ss->ds.rsa = ESP_RSA(&ss->rsa);
         ss->ds.sha = &ss->sha;
         qdev_realize(DEVICE(&ss->ds), &ss->periph_bus, &error_fatal);
