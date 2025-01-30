@@ -11,11 +11,18 @@
 #include "qemu/osdep.h"
 #include "hw/misc/esp32s3_rsa.h"
 
+static void esp32s3_rsa_class_init(ObjectClass *klass, void *data)
+{
+    ESPRsaClass* class = ESP_RSA_CLASS(klass);
+    class->rsa_mem_blk_size = ESP32S3_RSA_MEM_BLK_SIZE;
+    class->date = ESP32S3_RSA_DATE_REG_VALUE;
+}
 
 static const TypeInfo esp32s3_rsa_info = {
     .name = TYPE_ESP32S3_RSA,
     .parent = TYPE_ESP_RSA,
     .instance_size = sizeof(ESP32S3RsaState),
+    .class_init = esp32s3_rsa_class_init,
     .class_size = sizeof(ESP32S3RsaClass)
 };
 

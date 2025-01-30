@@ -20,16 +20,16 @@
 #define ESP_RSA_GET_CLASS(obj) OBJECT_GET_CLASS(ESPRsaClass, obj, TYPE_ESP_RSA)
 #define ESP_RSA_CLASS(klass) OBJECT_CLASS_CHECK(ESPRsaClass, klass, TYPE_ESP_RSA)
 
-#define ESP_RSA_MEM_BLK_SIZE    512
+#define ESP_RSA_MAX_MEM_BLK_SIZE    512
 
 typedef struct ESPRsaState {
     SysBusDevice parent_obj;
     MemoryRegion iomem;
 
-    uint32_t m_mem[ESP_RSA_MEM_BLK_SIZE / 4];
-    uint32_t z_mem[ESP_RSA_MEM_BLK_SIZE / 4];
-    uint32_t y_mem[ESP_RSA_MEM_BLK_SIZE / 4];
-    uint32_t x_mem[ESP_RSA_MEM_BLK_SIZE / 4];
+    uint32_t m_mem[ESP_RSA_MAX_MEM_BLK_SIZE / 4];
+    uint32_t z_mem[ESP_RSA_MAX_MEM_BLK_SIZE / 4];
+    uint32_t y_mem[ESP_RSA_MAX_MEM_BLK_SIZE / 4];
+    uint32_t x_mem[ESP_RSA_MAX_MEM_BLK_SIZE / 4];
 
     /* Configuration registers */
     uint32_t mprime_reg;
@@ -45,6 +45,12 @@ typedef struct ESPRsaState {
 
 typedef struct ESPRsaClass {
     SysBusDeviceClass parent_class;
+
+    /* Target specific registers */
+    uint32_t rsa_mem_blk_size;
+    /* Version register */
+    uint32_t date;
+
     /* Virtual methods*/
     void (*rsa_exp_mod)(ESPRsaState *s, uint32_t mode_reg, uint32_t *x_mem, uint32_t *y_mem, uint32_t *m_mem, uint32_t *z_mem, uint32_t int_ena);
 } ESPRsaClass;

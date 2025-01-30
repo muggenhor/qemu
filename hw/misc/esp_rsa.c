@@ -25,8 +25,8 @@
 #define RSA_WARNING 0
 
 static void copy_reversed(unsigned char* dest, size_t dst_size, const unsigned char* src, size_t src_size);
-static bool mpi_block_to_gcrypt(const uint32_t *mem_block, size_t n_bytes, gcry_mpi_t *out);
-static bool mpi_gcrypt_to_block(gcry_mpi_t in, uint32_t *mem_block);
+static bool mpi_block_to_gcrypt(const uint32_t *mem_block, size_t n_bytes, uint32_t rsa_mem_blk_size, gcry_mpi_t *out);
+static bool mpi_gcrypt_to_block(gcry_mpi_t in, uint32_t rsa_mem_blk_size, uint32_t *mem_block);
 static void esp_rsa_modmul_start(ESPRsaState *s);
 
 /**
@@ -50,21 +50,30 @@ static void copy_reversed(unsigned char* dst, size_t dst_size, const unsigned ch
  * Converts the little-endian memory block of the RSA peripheral to a new gcry_mpi_t object.
  * The caller is responsible for freeing the returned object.
  */
-static bool mpi_block_to_gcrypt(const uint32_t *mem_block, size_t n_bytes, gcry_mpi_t *out)
+static bool mpi_block_to_gcrypt(const uint32_t *mem_block, size_t n_bytes, uint32_t rsa_mem_blk_size, gcry_mpi_t *out)
 {
     size_t scanned;
     const unsigned char* mem_u8 = (const unsigned char*) mem_block;
-    unsigned char temp_buffer[ESP_RSA_MEM_BLK_SIZE] = {};
+
+    unsigned char *temp_buffer = (unsigned char *) g_malloc(rsa_mem_blk_size);
+    if (temp_buffer == NULL) {
+        error_report("%s: No more memory in host!", __func__);
+        return false;
+    }
+
     copy_reversed(temp_buffer, n_bytes, mem_u8, n_bytes);
     gcry_error_t err = gcry_mpi_scan(out, GCRYMPI_FMT_USG, temp_buffer, n_bytes, &scanned);
     if (err) {
         error_report("%s: gcry_mpi_scan failed with error: %s (%d)", __func__, gcry_strerror(err), err);
+        g_free(temp_buffer);
         return false;
     }
     if (scanned != n_bytes) {
         error_report("%s: gcry_mpi_scan scanned %zu, expected %zu", __func__, scanned, n_bytes);
+        g_free(temp_buffer);
         return false;
     }
+    g_free(temp_buffer);
     return true;
 }
 
@@ -72,17 +81,25 @@ static bool mpi_block_to_gcrypt(const uint32_t *mem_block, size_t n_bytes, gcry_
 /**
  * Copies an MPI from gcry_mpi_t object to the RSA peripheral memory block.
  */
-static bool mpi_gcrypt_to_block(gcry_mpi_t in, uint32_t *mem_block)
+static bool mpi_gcrypt_to_block(gcry_mpi_t in, uint32_t rsa_mem_blk_size, uint32_t *mem_block)
 {
     size_t written;
     unsigned char* mem_u8 = (unsigned char*) mem_block;
-    unsigned char temp_buffer[ESP_RSA_MEM_BLK_SIZE] = {};
-    gcry_error_t err = gcry_mpi_print(GCRYMPI_FMT_USG, temp_buffer, ESP_RSA_MEM_BLK_SIZE, &written, in);
-    if (err) {
-        error_report("%s: gcry_mpi_print failed with error: %s (%d)", __func__, gcry_strerror(err), err);
+
+    unsigned char *temp_buffer = (unsigned char *) g_malloc(rsa_mem_blk_size);
+    if (temp_buffer == NULL) {
+        error_report("%s: No more memory in host!", __func__);
         return false;
     }
-    copy_reversed(mem_u8, ESP_RSA_MEM_BLK_SIZE, temp_buffer, written);
+
+    gcry_error_t err = gcry_mpi_print(GCRYMPI_FMT_USG, temp_buffer, rsa_mem_blk_size, &written, in);
+    if (err) {
+        error_report("%s: gcry_mpi_print failed with error: %s (%d)", __func__, gcry_strerror(err), err);
+        g_free(temp_buffer);
+        return false;
+    }
+    copy_reversed(mem_u8, rsa_mem_blk_size, temp_buffer, written);
+    g_free(temp_buffer);
     return true;
 }
 
@@ -92,6 +109,8 @@ static bool mpi_gcrypt_to_block(gcry_mpi_t in, uint32_t *mem_block)
  */
 static void esp_rsa_exp_mod(ESPRsaState *s, uint32_t mode_reg, uint32_t *x_mem, uint32_t *y_mem, uint32_t *m_mem, uint32_t *z_mem, uint32_t int_ena)
 {
+    ESPRsaClass *class = ESP_RSA_GET_CLASS(s);
+
     gcry_mpi_t x, y, z, m;
 
     /* Get the length of the operands in bytes. Register mode_reg designates the length
@@ -99,20 +118,20 @@ static void esp_rsa_exp_mod(ESPRsaState *s, uint32_t mode_reg, uint32_t *x_mem, 
     size_t n_bytes = (mode_reg + 1) * 4;
 
     /* Convert inputs to gcry_mpi_t */
-    if (!mpi_block_to_gcrypt(x_mem, n_bytes, &x)) {
+    if (!mpi_block_to_gcrypt(x_mem, n_bytes, class->rsa_mem_blk_size, &x)) {
         goto error_ret;
     }
-    if (!mpi_block_to_gcrypt(y_mem, n_bytes, &y)) {
+    if (!mpi_block_to_gcrypt(y_mem, n_bytes, class->rsa_mem_blk_size, &y)) {
         goto error_x;
     }
-    if (!mpi_block_to_gcrypt(m_mem, n_bytes, &m)) {
+    if (!mpi_block_to_gcrypt(m_mem, n_bytes, class->rsa_mem_blk_size, &m)) {
         goto error_y;
     }
 
     /* calculate the result and write it back */
     z = gcry_mpi_new(n_bytes * 8);
     gcry_mpi_powm(z, x, y, m);
-    mpi_gcrypt_to_block(z, z_mem);
+    mpi_gcrypt_to_block(z, class->rsa_mem_blk_size, z_mem);
 
     /* Trigger an interrupt on completion */
     if (int_ena) {
@@ -134,6 +153,8 @@ error_ret:
 /* Calculates Z_MEM = X_MEM * Y_MEM mod M_MEM. */
 static void esp_rsa_modmul_start(ESPRsaState *s)
 {
+    ESPRsaClass *class = ESP_RSA_GET_CLASS(s);
+
     assert(s->mode_reg < (1 << 7));
     gcry_mpi_t m, x, z, y;
 
@@ -142,13 +163,13 @@ static void esp_rsa_modmul_start(ESPRsaState *s)
     const size_t n_bytes = (s->mode_reg + 1) * 4;
 
     /* Convert inputs to gcry_mpi_t */
-    if (!mpi_block_to_gcrypt(s->x_mem, n_bytes, &x)) {
+    if (!mpi_block_to_gcrypt(s->x_mem, n_bytes, class->rsa_mem_blk_size, &x)) {
         goto error_ret;
     }
-    if (!mpi_block_to_gcrypt(s->y_mem, n_bytes, &y)) {
+    if (!mpi_block_to_gcrypt(s->y_mem, n_bytes, class->rsa_mem_blk_size, &y)) {
         goto error_x;
     }
-    if (!mpi_block_to_gcrypt(s->m_mem, n_bytes, &m)) {
+    if (!mpi_block_to_gcrypt(s->m_mem, n_bytes, class->rsa_mem_blk_size, &m)) {
         goto error_y;
     }
 
@@ -158,7 +179,7 @@ static void esp_rsa_modmul_start(ESPRsaState *s)
     gcry_mpi_mulm(z, x, y, m);
 
     /* Write back */
-    mpi_gcrypt_to_block(z, s->z_mem);
+    mpi_gcrypt_to_block(z, class->rsa_mem_blk_size, s->z_mem);
 
     /* Trigger an interrupt on completion */
     if (s->int_ena) {
@@ -180,6 +201,8 @@ error_ret:
 /** Calculates Z_MEM = X_MEM * Z_MEM */
 static void esp_rsa_mul_start(ESPRsaState *s)
 {
+    ESPRsaClass *class = ESP_RSA_GET_CLASS(s);
+
     /* In this mode, the output length, in 32-bit word, is set by mode_reg. The input is length / 2.
      * Thus, multiply mode_reg by 4 to get the number of bytes. */
     size_t n_bytes = (s->mode_reg + 1) * 4;
@@ -190,17 +213,17 @@ static void esp_rsa_mul_start(ESPRsaState *s)
 
     /* Convert inputs to gcry_mpi_t */
     gcry_mpi_t x, z, result;
-    if (!mpi_block_to_gcrypt(s->x_mem, n_bytes, &x)) {
+    if (!mpi_block_to_gcrypt(s->x_mem, n_bytes, class->rsa_mem_blk_size, &x)) {
         goto error_ret;
     }
-    if (!mpi_block_to_gcrypt(s->z_mem, n_bytes, &z)) {
+    if (!mpi_block_to_gcrypt(s->z_mem, n_bytes, class->rsa_mem_blk_size, &z)) {
         goto error_x;
     }
 
     /* Multiply */
     result = gcry_mpi_new(n_bytes * 8);
     gcry_mpi_mul(result, x, z);
-    mpi_gcrypt_to_block(result, s->z_mem);
+    mpi_gcrypt_to_block(result, class->rsa_mem_blk_size, s->z_mem);
 
     /* Trigger an interrupt on completion */
     if (s->int_ena) {
@@ -228,22 +251,24 @@ static void esp_rsa_clean_mem(ESPRsaState *s)
 static uint64_t esp_rsa_read(void *opaque, hwaddr addr, unsigned int size)
 {
     ESPRsaState *s = ESP_RSA(opaque);
+    ESPRsaClass *class = ESP_RSA_GET_CLASS(opaque);
+
     uint64_t r = 0;
 
     switch (addr) {
-        case A_RSA_MEM_M_BLOCK_BASE ... (A_RSA_MEM_M_BLOCK_BASE + ESP_RSA_MEM_BLK_SIZE - 1):
+        case A_RSA_MEM_M_BLOCK_BASE ... (A_RSA_MEM_M_BLOCK_BASE + ESP_RSA_MAX_MEM_BLK_SIZE - 1):
             r = s->m_mem[(addr - A_RSA_MEM_M_BLOCK_BASE) / sizeof(uint32_t)];
             break;
 
-        case A_RSA_MEM_Z_BLOCK_BASE ... (A_RSA_MEM_Z_BLOCK_BASE + ESP_RSA_MEM_BLK_SIZE - 1):
+        case A_RSA_MEM_Z_BLOCK_BASE ... (A_RSA_MEM_Z_BLOCK_BASE + ESP_RSA_MAX_MEM_BLK_SIZE - 1):
             r = s->z_mem[(addr - A_RSA_MEM_Z_BLOCK_BASE) / sizeof(uint32_t)];
             break;
 
-        case A_RSA_MEM_Y_BLOCK_BASE ... (A_RSA_MEM_Y_BLOCK_BASE + ESP_RSA_MEM_BLK_SIZE - 1):
+        case A_RSA_MEM_Y_BLOCK_BASE ... (A_RSA_MEM_Y_BLOCK_BASE + ESP_RSA_MAX_MEM_BLK_SIZE - 1):
             r = s->y_mem[(addr - A_RSA_MEM_Y_BLOCK_BASE) / sizeof(uint32_t)];
             break;
 
-        case A_RSA_MEM_X_BLOCK_BASE ... (A_RSA_MEM_X_BLOCK_BASE + ESP_RSA_MEM_BLK_SIZE - 1):
+        case A_RSA_MEM_X_BLOCK_BASE ... (A_RSA_MEM_X_BLOCK_BASE + ESP_RSA_MAX_MEM_BLK_SIZE - 1):
             r = s->x_mem[(addr - A_RSA_MEM_X_BLOCK_BASE) / sizeof(uint32_t)];
             break;
 
@@ -281,6 +306,10 @@ static uint64_t esp_rsa_read(void *opaque, hwaddr addr, unsigned int size)
             r = s->int_ena;
             break;
 
+        case A_RSA_DATE_REG:
+            r = class->date;
+            break;
+
         default:
 #if RSA_WARNING
             warn_report("[RSA] Unsupported read to register %08x\n", addr);
@@ -301,19 +330,19 @@ static void esp_rsa_write(void *opaque, hwaddr addr,
 
     switch (addr) {
 
-        case A_RSA_MEM_M_BLOCK_BASE ... (A_RSA_MEM_M_BLOCK_BASE + ESP_RSA_MEM_BLK_SIZE - 1):
+        case A_RSA_MEM_M_BLOCK_BASE ... (A_RSA_MEM_M_BLOCK_BASE + ESP_RSA_MAX_MEM_BLK_SIZE - 1):
             s->m_mem[(addr - A_RSA_MEM_M_BLOCK_BASE) / sizeof(uint32_t)] = (uint32_t)value;
             break;
 
-        case A_RSA_MEM_Z_BLOCK_BASE ... (A_RSA_MEM_Z_BLOCK_BASE + ESP_RSA_MEM_BLK_SIZE - 1):
+        case A_RSA_MEM_Z_BLOCK_BASE ... (A_RSA_MEM_Z_BLOCK_BASE + ESP_RSA_MAX_MEM_BLK_SIZE - 1):
             s->z_mem[(addr - A_RSA_MEM_Z_BLOCK_BASE) / sizeof(uint32_t)] = (uint32_t)value;
             break;
 
-        case A_RSA_MEM_Y_BLOCK_BASE ... (A_RSA_MEM_Y_BLOCK_BASE + ESP_RSA_MEM_BLK_SIZE - 1):
+        case A_RSA_MEM_Y_BLOCK_BASE ... (A_RSA_MEM_Y_BLOCK_BASE + ESP_RSA_MAX_MEM_BLK_SIZE - 1):
             s->y_mem[(addr - A_RSA_MEM_Y_BLOCK_BASE) / sizeof(uint32_t)] = (uint32_t)value;
             break;
 
-        case A_RSA_MEM_X_BLOCK_BASE ... (A_RSA_MEM_X_BLOCK_BASE + ESP_RSA_MEM_BLK_SIZE - 1):
+        case A_RSA_MEM_X_BLOCK_BASE ... (A_RSA_MEM_X_BLOCK_BASE + ESP_RSA_MAX_MEM_BLK_SIZE - 1):
             s->x_mem[(addr - A_RSA_MEM_X_BLOCK_BASE) / sizeof(uint32_t)] = (uint32_t)value;
             break;
 

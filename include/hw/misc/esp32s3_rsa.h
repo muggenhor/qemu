@@ -18,12 +18,12 @@
 #define ESP32S3_RSA_CLASS(klass) OBJECT_CLASS_CHECK(ESP32S3RsaClass, klass, TYPE_ESP32S3_RSA)
 
 #define ESP32S3_RSA_MEM_BLK_SIZE    512
+#define ESP32S3_RSA_DATE_REG_VALUE    0x20190425
 
 typedef struct ESP32S3RsaState {
     ESPRsaState parent;
 } ESP32S3RsaState;
 
 typedef struct ESP32S3RsaClass {
-    ESPRsaState parent_class;
-    DeviceRealize parent_realize;
+    ESPRsaClass parent_class;
 } ESP32S3RsaClass;
