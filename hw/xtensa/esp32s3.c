@@ -366,11 +366,9 @@ static void esp32s3_soc_realize(DeviceState *dev, Error **errp)
                            memmap[ESP32S3_MEMREGION_RTCSLOW].size, &error_fatal);
     memory_region_add_subregion(sys_mem, memmap[ESP32S3_MEMREGION_RTCSLOW].base, rtcslow);
 
-    /* RTC Fast memory is only accessible by the PRO CPU */
-
     memory_region_init_ram(rtcfast, NULL, "esp32s3.rtcfast",
                            memmap[ESP32S3_MEMREGION_RTCFAST].size, &error_fatal);
-    memory_region_add_subregion(&s->cpu_specific_mem[0], memmap[ESP32S3_MEMREGION_RTCFAST].base, rtcfast);
+    memory_region_add_subregion(sys_mem, memmap[ESP32S3_MEMREGION_RTCFAST].base, rtcfast);
 
     for (int i = 0; i < ms->smp.cpus; ++i) {
         qdev_realize(DEVICE(&s->cpu[i]), NULL, &error_fatal);
