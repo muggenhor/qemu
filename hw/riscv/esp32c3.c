@@ -611,7 +611,7 @@ static void esp32c3_machine_init(MachineState *machine)
 
     /* HMAC realization */
     {
-        ms->hmac.efuse = ESP_EFUSE(&ms->efuse);
+        ms->hmac.parent.efuse = ESP_EFUSE(&ms->efuse);
         qdev_realize(DEVICE(&ms->hmac), &ms->periph_bus, &error_fatal);
         MemoryRegion *mr = sysbus_mmio_get_region(SYS_BUS_DEVICE(&ms->hmac), 0);
         memory_region_add_subregion_overlap(sys_mem, DR_REG_HMAC_BASE, mr, 0);
@@ -619,7 +619,7 @@ static void esp32c3_machine_init(MachineState *machine)
 
     /* Digital Signature realization */
     {
-        ms->ds.hmac = &ms->hmac;
+        ms->ds.hmac = ESP_HMAC(&ms->hmac);
         ms->ds.aes = ESP_AES(&ms->aes);
         ms->ds.rsa = ESP_RSA(&ms->rsa);
         ms->ds.sha = ESP_SHA(&ms->sha);
