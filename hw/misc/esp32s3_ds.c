@@ -38,7 +38,7 @@ static void esp32s3_ds_generate_ds_key(ESP32S3DsState *s)
     write_and_padd(block, ones, sizeof(ones));
     memcpy(block + SHA256_BLOCK_SIZE - sizeof(bit_len), &bit_len, sizeof(bit_len));
 
-    ESP32S3HmacClass *hmac_class = ESP32S3_HMAC_GET_CLASS(s->hmac);
+    ESPHmacClass *hmac_class = ESP_HMAC_GET_CLASS(s->hmac);
 
     hmac_class->hmac_update(s->hmac, (uint32_t*) block);
     hmac_class->hmac_finish(s->hmac, s->ds_key);

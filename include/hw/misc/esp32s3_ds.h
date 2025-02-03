@@ -16,7 +16,7 @@
 #include "hw/misc/esp_aes.h"
 #include "hw/misc/esp_sha.h"
 #include "hw/misc/esp_rsa.h"
-#include "hw/misc/esp32s3_hmac.h"
+#include "hw/misc/esp_hmac.h"
 
 
 #define TYPE_ESP32S3_DS "misc.esp32s3.ds"
@@ -67,7 +67,7 @@ typedef struct ESP32S3DsState {
     uint32_t ds_key[ESP32S3_DS_KEY_SIZE / 4];
     ds_signature_check_t ds_signature_check;
 
-    ESP32S3HmacState *hmac;
+    ESPHmacState *hmac;
     ESPAesState *aes;
     ESPRsaState *rsa;
     ESPShaState *sha;
