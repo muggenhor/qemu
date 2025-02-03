@@ -582,7 +582,7 @@ static void esp32c3_machine_init(MachineState *machine)
 
     /* SHA realization */
     {
-        ms->sha.gdma = ESP_GDMA(&ms->gdma);
+        ms->sha.parent.gdma = ESP_GDMA(&ms->gdma);
         sysbus_realize(SYS_BUS_DEVICE(&ms->sha), &error_fatal);
         MemoryRegion *mr = sysbus_mmio_get_region(SYS_BUS_DEVICE(&ms->sha), 0);
         memory_region_add_subregion_overlap(sys_mem, DR_REG_SHA_BASE, mr, 0);
@@ -622,7 +622,7 @@ static void esp32c3_machine_init(MachineState *machine)
         ms->ds.hmac = &ms->hmac;
         ms->ds.aes = ESP_AES(&ms->aes);
         ms->ds.rsa = ESP_RSA(&ms->rsa);
-        ms->ds.sha = &ms->sha;
+        ms->ds.sha = ESP_SHA(&ms->sha);
         qdev_realize(DEVICE(&ms->ds), &ms->periph_bus, &error_fatal);
         MemoryRegion *mr = sysbus_mmio_get_region(SYS_BUS_DEVICE(&ms->ds), 0);
         memory_region_add_subregion_overlap(sys_mem, DR_REG_DIGITAL_SIGNATURE_BASE, mr, 0);

@@ -128,7 +128,7 @@ static bool md_and_pad_check(ESP32C3DsState *s)
 
     /* MD check */
     uint32_t md_check[ESP32C3_DS_MD_SIZE / 4];
-    ESP32C3ShaClass *sha_class = ESP32C3_SHA_GET_CLASS(s->sha);
+    ESPShaClass *sha_class = ESP_SHA_GET_CLASS(s->sha);
 
     uint8_t buffer[ESP32C3_DS_CALC_MD_SIZE];
     index = 0;
@@ -154,9 +154,9 @@ static bool md_and_pad_check(ESP32C3DsState *s)
 
     for (int i = 0; i < remaining_blocks; i++) {
         if (i == 0) {
-            sha_class->sha_start(s->sha, OP_START, ESP32C3_SHA_256_MODE, (uint32_t*) (buffer + i * SHA256_BLOCK_SIZE), md_check);
+            sha_class->sha_start(s->sha, OP_START, ESP_SHA_256_MODE, (uint32_t*) (buffer + i * SHA256_BLOCK_SIZE), md_check);
         } else {
-            sha_class->sha_start(s->sha, OP_CONTINUE, ESP32C3_SHA_256_MODE, (uint32_t*) (buffer + i * SHA256_BLOCK_SIZE), md_check);
+            sha_class->sha_start(s->sha, OP_CONTINUE, ESP_SHA_256_MODE, (uint32_t*) (buffer + i * SHA256_BLOCK_SIZE), md_check);
         }
     }
 
@@ -166,7 +166,7 @@ static bool md_and_pad_check(ESP32C3DsState *s)
         uint64_t bit_len = be64_to_cpu(ESP32C3_DS_CALC_MD_SIZE * 8);
         write_and_padd(block, buffer + ESP32C3_DS_CALC_MD_SIZE - remaining, remaining);
         memcpy(block + SHA256_BLOCK_SIZE - sizeof(bit_len), &bit_len, sizeof(bit_len));
-        sha_class->sha_start(s->sha, OP_CONTINUE, ESP32C3_SHA_256_MODE, (uint32_t*) block, md_check);
+        sha_class->sha_start(s->sha, OP_CONTINUE, ESP_SHA_256_MODE, (uint32_t*) block, md_check);
     }
 
     for (int i = 0; i < SHA256_DIGEST_SIZE / 4; i++) {
