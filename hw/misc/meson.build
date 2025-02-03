@@ -153,6 +153,7 @@ system_ss.add(when: 'CONFIG_XTENSA_ESP32', if_true: files(
 ))
 system_ss.add(when: 'CONFIG_XTENSA_ESP32S3', if_true: files(
   'esp32s3_cache.c',
+  'esp_sha.c',
   'esp32s3_sha.c',
   'esp32c3_jtag.c',
   'esp32s3_rtc_cntl.c',

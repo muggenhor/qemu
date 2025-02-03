@@ -14,7 +14,7 @@
 #include "hw/sysbus.h"
 #include "hw/registerfields.h"
 #include "hw/misc/esp_aes.h"
-#include "hw/misc/esp32s3_sha.h"
+#include "hw/misc/esp_sha.h"
 #include "hw/misc/esp_rsa.h"
 #include "hw/misc/esp32s3_hmac.h"
 
@@ -70,7 +70,7 @@ typedef struct ESP32S3DsState {
     ESP32S3HmacState *hmac;
     ESPAesState *aes;
     ESPRsaState *rsa;
-    ESP32S3ShaState *sha;
+    ESPShaState *sha;
 
 } ESP32S3DsState;
 
