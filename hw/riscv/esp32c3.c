@@ -619,10 +619,10 @@ static void esp32c3_machine_init(MachineState *machine)
 
     /* Digital Signature realization */
     {
-        ms->ds.hmac = ESP_HMAC(&ms->hmac);
-        ms->ds.aes = ESP_AES(&ms->aes);
-        ms->ds.rsa = ESP_RSA(&ms->rsa);
-        ms->ds.sha = ESP_SHA(&ms->sha);
+        ms->ds.parent.hmac = ESP_HMAC(&ms->hmac);
+        ms->ds.parent.aes = ESP_AES(&ms->aes);
+        ms->ds.parent.rsa = ESP_RSA(&ms->rsa);
+        ms->ds.parent.sha = ESP_SHA(&ms->sha);
         qdev_realize(DEVICE(&ms->ds), &ms->periph_bus, &error_fatal);
         MemoryRegion *mr = sysbus_mmio_get_region(SYS_BUS_DEVICE(&ms->ds), 0);
         memory_region_add_subregion_overlap(sys_mem, DR_REG_DIGITAL_SIGNATURE_BASE, mr, 0);
